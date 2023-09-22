@@ -32,6 +32,17 @@ class MyRadiobuttonFrame(tk.CTkFrame):
         self.variable.set(value)
 
 
+class ToplevelWindow(tk.CTkToplevel):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.geometry("200x200")
+
+        self.label = tk.CTkLabel(self, text="ErrorMSG")
+        self.label.pack(padx=20, pady=20)
+
+        # self.button = tk.CTkButton(self, )
+
+
 class Root(tk.CTk):
     def __init__(self):
         super().__init__()
@@ -61,18 +72,30 @@ class Root(tk.CTk):
         self.image_label = tk.CTkLabel(self, text='YOUR IMAGE HERE')
         self.image_label.grid(row=3, column=0, padx=10, pady=10)
 
+        self.toplevel_window = None
+
+    def open_toplevel(self):
+        if self.toplevel_window is None or not self.toplevel_window.winfo_exists():
+            self.toplevel_window = ToplevelWindow(self)  # create window if its None or destroyed
+        else:
+            self.toplevel_window.focus()  # if window exists focus it
+
     def click(self, event):
         self.textbox.configure(state='normal')
         self.textbox.delete('0.0', 'end')
         self.textbox.unbind('<Button-1>', clicked)
 
     def get_image_url(self):
-        """
-        this returns
-        :return:
-        """
-        image_url = self.submit()
-        self.display_image(image_url)
+        try:
+            image_url = self.submit()
+        except openai.error.InvalidRequestError:
+            self.textbox.insert('0.0', 'Prompt cannot be empty')
+            self.textbox.configure(fg_color='red', text_color='yellow')
+            # error_label = tk.CTkLabel(self, text='Prompt cannot be empty', fg_color='red')
+            # error_label.grid(row=2, column=2)
+            # self.open_toplevel()
+        else:
+            self.display_image(image_url)
 
     def display_image(self, image_url):
         """
@@ -97,17 +120,16 @@ class Root(tk.CTk):
         load_dotenv(dotenv_path=r'C:\Users\Master\PycharmProjects\api.env')
         openai.api_key = os.getenv('DALLE_API')
 
-        if self.textbox.get('0.0', 'end'):
-            response = openai.Image.create(
-                prompt=self.textbox.get('0.0', 'end'),
-                n=1,
-                size=self.radiobutton_frame.get()  # 256x 512x 1024x
-            )
-            return response['data'][0]['url']
-        return 'Enter text'
+        response = openai.Image.create(
+            prompt=self.textbox.get('0.0', 'end'),
+            n=1,
+            size=self.radiobutton_frame.get()  # 256x 512x 1024x
+        )
+        return response['data'][0]['url']
 
     def clear(self):
         self.textbox.delete('0.0', 'end')
+        self.textbox.configure(fg_color='white', text_color='black')
 
 
 app = Root()
