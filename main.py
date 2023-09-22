@@ -1,7 +1,11 @@
 import customtkinter as tk
+from customtkinter import CTkImage
 from dotenv import load_dotenv
+from io import BytesIO
 import openai
 import os
+import urllib.request
+from PIL import Image, ImageTk
 
 
 class MyRadiobuttonFrame(tk.CTkFrame):
@@ -28,31 +32,24 @@ class MyRadiobuttonFrame(tk.CTkFrame):
         self.variable.set(value)
 
 
-class MyTextBoxFrame(tk.CTkFrame):
-    def __init__(self, master, title):
-        super().__init__(master)
-        self.title = title
-
-
 class Root(tk.CTk):
     def __init__(self):
         super().__init__()
 
         self.title('ImageX')
-        self.geometry('400x300')
+        self.geometry('800x600')
         self.grid_columnconfigure(0, weight=1)
         # self.grid_rowconfigure(0, weight=1)
 
-        # TEXTBOX AND INPUT BOX
         self.textbox = tk.CTkTextbox(self, width=400, corner_radius=0)
         self.textbox.grid(row=0, column=0, sticky="nsew", columnspan=2)
-        self.textbox.insert("0.0", "Enter description of photo:")
+        self.textbox.insert("0.0", "Enter description of photo and choose size:")
         self.textbox.update()
         # self.input = tk.CTkEntry(self)
         # self.input.grid(row=0, column=0, padx=20, pady=20, sticky='ew', columnspan=2)
 
-        # RADIO BUTTONS
-        self.radiobutton_frame = MyRadiobuttonFrame(self, "Size", values=["256 x 256", "512 x 512", "1024 x 1024"])
+        # radio buttons
+        self.radiobutton_frame = MyRadiobuttonFrame(self, "Size", values=["256x256", "512x512", "1024x1024"])
         self.radiobutton_frame.grid(row=0, column=2, padx=(0, 10), pady=(10, 0), sticky="nsew")
 
         # regular buttons
@@ -61,14 +58,40 @@ class Root(tk.CTk):
         self.button_clear = tk.CTkButton(self, text="Clear", command=self.clear)
         self.button_clear.grid(row=2, column=1, padx=(0, 20))
 
+        self.image_label = tk.CTkLabel(self, text='YOUR IMAGE HERE')
+        self.image_label.grid(row=3, column=0, padx=10, pady=10)
+
     def click(self, event):
         self.textbox.configure(state='normal')
         self.textbox.delete('0.0', 'end')
         self.textbox.unbind('<Button-1>', clicked)
 
     def get_image_url(self):
+        """
+        this returns
+        :return:
+        """
         image_url = self.submit()
-        print(image_url)
+        self.display_image(image_url)
+
+    def display_image(self, image_url):
+        """
+        This functions saves the created image to the RAM. The photo is received in bytes, loading top-to-bottom first.
+        Tfore, we need to download it first and then open it completely. Need to use 'urllib'. 'with' is used in order
+        to open and the close the file. 'read' method is used to read the data. Next we need to save the read data to
+        RAM. 'image_stream' is the float as bytes of the photo. 'from io import BytesIO' -> 'BytesIO' saves the image to
+        RAM. In order to render the image, 'Pillow' lib must be installed. The image is a 2D matrix. First we render the
+        as normal image using 'Image.open(image_stream)', then as Tk object. Then we create 'label' object in the Root
+        class and attach the image using 'configure' method as below. To save the file we must write 'self.image_label
+        = image'
+        """
+        with urllib.request.urlopen(image_url) as url:
+            image_data = url.read()
+        image_stream = BytesIO(image_data)
+        image = Image.open(image_stream)
+        image = ImageTk.PhotoImage(image)
+        self.image_label.configure(text='', image=image)
+        self.image_label = image
 
     def submit(self):
         load_dotenv(dotenv_path=r'C:\Users\Master\PycharmProjects\api.env')
@@ -78,7 +101,7 @@ class Root(tk.CTk):
             response = openai.Image.create(
                 prompt=self.textbox.get('0.0', 'end'),
                 n=1,
-                size="256x256"  # 256x 512x 1024x
+                size=self.radiobutton_frame.get()  # 256x 512x 1024x
             )
             return response['data'][0]['url']
         return 'Enter text'
