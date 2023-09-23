@@ -117,9 +117,8 @@ class Root(tk.CTk):
         self.image_label = image
 
     def submit(self):
-        load_dotenv(dotenv_path=r'C:\Users\Master\PycharmProjects\api.env')
+        load_dotenv(dotenv_path=os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'api.env')))
         openai.api_key = os.getenv('DALLE_API')
-
         response = openai.Image.create(
             prompt=self.textbox.get('0.0', 'end'),
             n=1,
