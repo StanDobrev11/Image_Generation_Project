@@ -1,3 +1,5 @@
+import re
+
 import customtkinter as tk
 from customtkinter import CTkImage
 from dotenv import load_dotenv
@@ -79,7 +81,13 @@ class Root(tk.CTk):
 
         self.toplevel_window = None
 
-    def save_image(self, image, path):
+    @staticmethod
+    def save_image(image, path):
+        counter = 1
+        while os.path.isfile(path):
+            image_name = re.findall(r'/(.*?)\.jpg', path)[0]
+            path = f"{image_name}_{counter}.jpg"
+            counter += 1
         image.save(path)
 
     def open_toplevel(self):
@@ -110,7 +118,7 @@ class Root(tk.CTk):
             self.display_image(image)
 
     @staticmethod
-    def convert_to_image_object(self, image_url):
+    def convert_to_image_object(image_url):
         with urllib.request.urlopen(image_url) as url:
             image_data = url.read()
         image_stream = BytesIO(image_data)
