@@ -7,6 +7,8 @@ import os
 import urllib.request
 from PIL import Image, ImageTk
 
+MEDIA_FOLDER = './images'  # folder to save images to
+
 
 class MyRadiobuttonFrame(tk.CTkFrame):
     def __init__(self, master, title, values):
@@ -65,14 +67,20 @@ class Root(tk.CTk):
 
         # regular buttons
         self.button_submit = tk.CTkButton(self, text="Submit", command=self.get_image_url)
-        self.button_submit.grid(row=2, column=0, pady=20, padx=(20, 20), sticky='w')
+        self.button_submit.grid(row=2, column=0, pady=20, padx=(20, 20))
         self.button_clear = tk.CTkButton(self, text="Clear", command=self.clear)
         self.button_clear.grid(row=2, column=1, padx=(0, 20))
+
+        self.button_save = tk.CTkButton(self, text="Save Image", state='disabled')
+        self.button_save.grid(row=2, column=2, pady=20, padx=(20, 20))
 
         self.image_label = tk.CTkLabel(self, text='YOUR IMAGE HERE')
         self.image_label.grid(row=3, column=0, padx=10, pady=10)
 
         self.toplevel_window = None
+
+    def save_image(self, image, path):
+        image.save(path)
 
     def open_toplevel(self):
         if self.toplevel_window is None or not self.toplevel_window.winfo_exists():
@@ -81,23 +89,36 @@ class Root(tk.CTk):
             self.toplevel_window.focus()  # if window exists focus it
 
     def click(self, event):
-        self.textbox.configure(state='normal')
+        self.textbox.configure(state='normal', bg_color='white')
         self.textbox.delete('0.0', 'end')
         self.textbox.unbind('<Button-1>', clicked)
 
     def get_image_url(self):
         try:
             image_url = self.submit()
+            image_name = (self.textbox.get('0.0', 'end')).strip()
+            image_name = (image_name + ".jpg").replace(' ', '_')
+            image = self.convert_to_image_object(image_url)
+            self.button_save.configure(
+                state='normal',
+                command=lambda: self.save_image(image, f"./images/{image_name}"))
         except openai.error.InvalidRequestError:
-            self.textbox.insert('0.0', 'Prompt cannot be empty')
+            self.textbox.delete('0.0', 'end')
+            self.textbox.insert('0.0', 'Prompt cannot be empty or size not chosen')
             self.textbox.configure(fg_color='red', text_color='yellow')
-            # error_label = tk.CTkLabel(self, text='Prompt cannot be empty', fg_color='red')
-            # error_label.grid(row=2, column=2)
-            # self.open_toplevel()
         else:
-            self.display_image(image_url)
+            self.display_image(image)
 
-    def display_image(self, image_url):
+    @staticmethod
+    def convert_to_image_object(self, image_url):
+        with urllib.request.urlopen(image_url) as url:
+            image_data = url.read()
+        image_stream = BytesIO(image_data)
+        image = Image.open(image_stream)
+
+        return image
+
+    def display_image(self, image):
         """
         This functions saves the created image to the RAM. The photo is received in bytes, loading top-to-bottom first.
         Tfore, we need to download it first and then open it completely. Need to use 'urllib'. 'with' is used in order
@@ -108,13 +129,10 @@ class Root(tk.CTk):
         class and attach the image using 'configure' method as below. To save the file we must write 'self.image_label
         = image'
         """
-        with urllib.request.urlopen(image_url) as url:
-            image_data = url.read()
-        image_stream = BytesIO(image_data)
-        image = Image.open(image_stream)
-        image = ImageTk.PhotoImage(image)
-        self.image_label.configure(text='', image=image)
-        self.image_label = image
+        image_tk = ImageTk.PhotoImage(image)
+
+        self.image_label.configure(text='', image=image_tk)
+        self.image_label = image_tk
 
     def submit(self):
         load_dotenv(dotenv_path=os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'api.env')))
