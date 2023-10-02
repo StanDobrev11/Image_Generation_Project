@@ -1,5 +1,4 @@
 import re
-
 import customtkinter as tk
 from customtkinter import CTkImage
 from dotenv import load_dotenv
